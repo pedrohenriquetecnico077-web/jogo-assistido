@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Game & Watch: FIRE - Edição Final</title>
+    <style>
+        /* --- ESTILO DO LAUNCHER (TELA INICIAL) --- */
+        #launcher {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+            text-align: center;
+        }
+
+        .app-icon {
+            width: 120px;
+            height: 120px;
+            background: #b31d1d; 
+            border-radius: 25px;
+            border: 4px solid #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .app-icon:hover { transform: scale(1.1); }
+
+        .app-icon img {
+            width: 80%;
+            filter: brightness(0) invert(1); 
+        }
+
+        #launcher p {
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            margin: 5px 0;
+        }
+
+        /* Estilo específico para o aviso de direitos autorais */
+        .copyright-notice {
+            font-size: 10px;
+            color: #888 !important;
+            margin-top: 15px !important;
+            max-width: 300px;
+            line-height: 1.4;
+            text-transform: uppercase;
+        }
+
+        /* --- ESTILO DO JOGO --- */
+        #game-wrapper {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #222;
+        }
+
+        #game-container {
+            width: 700px; height: 400px;
+            background-color: #9ca67e; 
+            border: 18px solid #b31d1d;
+            border-radius: 12px;
+            position: relative;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.2), 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        #building { position: absolute; left: 0; bottom: 20px; height: 350px; filter: contrast(150%) brightness(0.2); z-index: 5; }
+        #extra-sprite { position: absolute; right: 10px; bottom: 20px; width: 120px; filter: contrast(150%) brightness(0.2); z-index: 5; }
+        .character, .firemen { position: absolute; display: none; filter: contrast(150%) brightness(0.2); image-rendering: pixelated; }
+        .character { width: 55px; z-index: 10; }
+        .firemen { width: 140px; z-index: 9; }
+        .active { display: block; }
+        #score-display { position: absolute; top: 15px; right: 25px; font-size: 32px; font-weight: bold; color: #222; z-index: 20; }
+        
+        #game-over-screen {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); color: white; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+
+        button { margin-top: 15px; padding: 12px 25px; font-size: 20px; cursor: pointer; background: #9ca67e; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="launcher">
+        <div class="app-icon" onclick="launchGame()">
+            <img src="game W.png" alt="Icon">
+        </div>
+        <p>CLIQUE PARA INICIAR</p>
+        <p class="copyright-notice">
+            Os sprites e personagens utilizados nesta obra são de propriedade da Nintendo. Este é um projeto sem fins lucrativos.
+        </p>
+    </div>
+
+    <div id="game-wrapper">
+        <div id="game-container">
+            <div id="score-display">000</div>
+            
+            <div id="game-over-screen">
+                <h1 style="margin:0">MISS</h1>
+                <button onclick="resetGame()">REINICIAR</button>
+            </div>
+
+            <img id="building" src="predio.png">
+            <img id="extra-sprite" src="sus.png" onerror="this.style.display='none'">
+
+            <img id="p-0" class="firemen" src="pulo.png" style="bottom: 25px; left: 140px;">
+            <img id="p-1" class="firemen" src="pulo.png" style="bottom: 25px; left: 280px;">
+            <img id="p-2" class="firemen" src="pulo.png" style="bottom: 25px; left: 420px;">
+
+            <img id="step-0" class="character" src="game W.png" style="bottom: 75px; left: 185px;">
+            <img id="step-1" class="character" src="game W.png" style="top: 80px; left: 260px;">
+            <img id="step-2" class="character" src="game W.png" style="bottom: 75px; left: 325px;">
+            <img id="step-3" class="character" src="game W.png" style="top: 80px; left: 400px;">
+            <img id="step-4" class="character" src="game W.png" style="bottom: 75px; left: 465px;">
+        </div>
+        <p style="color: #666; margin-top: 20px;">Setas para mover | Clique no jogo para o som</p>
+    </div>
+
+<script>
+    function launchGame() {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        document.getElementById('launcher').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('launcher').style.display = 'none';
+            document.getElementById('game-wrapper').style.display = 'flex';
+            resetGame();
+        }, 500);
+    }
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(freq, duration) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+
+    let playerPos = 1; let currentStep = 0; let score = 0; let gameClock; let isDead = false;
+
+    function render() {
+        document.querySelectorAll('.firemen').forEach(el => el.classList.remove('active'));
+        document.getElementById(`p-${playerPos}`).classList.add('active');
+        document.querySelectorAll('.character').forEach(el => el.classList.remove('active'));
+        document.getElementById(`step-${currentStep}`).classList.add('active');
+    }
+
+    function tick() {
+        if (isDead) return;
+        playBeep(880, 0.05);
+
+        if ([0, 2, 4].includes(currentStep)) {
+            if (playerPos !== currentStep / 2) { gameOver(); return; }
+            else { score += 1; document.getElementById('score-display').innerText = score.toString().padStart(3, '0'); }
+        }
+
+        currentStep++;
+        if (currentStep >= 5) { currentStep = 0; playerPos = 1; }
+        render();
+    }
+
+    function gameOver() {
+        isDead = true; clearInterval(gameClock);
+        playBeep(220, 0.5);
+        document.getElementById('game-over-screen').style.display = 'flex';
+    }
+
+    function resetGame() {
+        isDead = false; score = 0; currentStep = 0; playerPos = 1;
+        document.getElementById('score-display').innerText = "000";
+        document.getElementById('game-over-screen').style.display = 'none';
+        render();
+        if(gameClock) clearInterval(gameClock);
+        gameClock = setInterval(tick, 500);
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (isDead) return;
+        if (e.key === "ArrowLeft" && playerPos > 0) { playerPos--; playBeep(1200, 0.02); render(); }
+        if (e.key === "ArrowRight" && playerPos < 2) { playerPos++; playBeep(1200, 0.02); render(); }
+    });
+</script>
+</body>
+</html>
